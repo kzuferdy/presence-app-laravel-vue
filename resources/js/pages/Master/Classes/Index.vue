@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { nextTick, ref, onMounted } from 'vue';
 import {
     Dialog,
     DialogContent,
@@ -12,76 +11,111 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import InputError from '@/components/InputError.vue';
-
-
-//test
-
+import axios from 'axios';
 
 interface SchoolClass {
     id: number;
     name: string;
     slug: string;
+    created_at: string;
+    updated_at: string;
 }
 
-const props = defineProps<{
-    classes: SchoolClass[];
-}>();
-
-const isDialogOpen = ref(false);
+const classes = ref<SchoolClass[]>([]);
 const editingClass = ref<SchoolClass | null>(null);
+const isDialogOpen = ref(false);
+const nameInput = ref<HTMLInputElement | null>(null);
 
-const form = useForm({
+const form = ref({
     name: '',
+    errors: {} as Record<string, string>,
+    processing: false,
 });
 
-const openCreate = () => {
-    editingClass.value = null;
-    form.reset();
-    form.clearErrors();
-    isDialogOpen.value = true;
+const fetchClasses = async () => {
+    try {
+        const response = await axios.get('/api/school-classes');
+        classes.value = response.data;
+    } catch (error) {
+        console.error('Failed to fetch classes', error);
+    }
 };
 
-const openEdit = (schoolClass: SchoolClass) => {
-    editingClass.value = schoolClass;
-    form.name = schoolClass.name;
-    form.clearErrors();
+onMounted(() => {
+    fetchClasses();
+});
+
+const openCreateDialog = async () => {
+    editingClass.value = null;
+    form.value.name = '';
+    form.value.errors = {};
     isDialogOpen.value = true;
+    
+    await nextTick();
+    nameInput.value?.focus();
+};
+
+const openEditDialog = async (schoolClass: SchoolClass) => {
+    editingClass.value = schoolClass;
+    form.value.name = schoolClass.name;
+    form.value.errors = {};
+    isDialogOpen.value = true;
+
+    await nextTick();
+    nameInput.value?.focus();
 };
 
 const closeDialog = () => {
     isDialogOpen.value = false;
-    form.reset();
+    form.value.name = '';
+    form.value.errors = {};
     editingClass.value = null;
 };
 
-const submit = () => {
-    if (editingClass.value) {
-        form.put(`/master/classes/${editingClass.value.id}`, {
-            onSuccess: () => closeDialog(),
-        });
-    } else {
-        form.post('/master/classes', {
-            onSuccess: () => closeDialog(),
-        });
+const submit = async () => {
+    form.value.processing = true;
+    form.value.errors = {};
+
+    try {
+        if (editingClass.value) {
+            await axios.put(`/api/school-classes/${editingClass.value.id}`, {
+                name: form.value.name,
+            });
+        } else {
+            await axios.post('/api/school-classes', {
+                name: form.value.name,
+            });
+        }
+        await fetchClasses();
+        closeDialog();
+    } catch (error: any) {
+        if (error.response && error.response.data.errors) {
+            form.value.errors = error.response.data.errors;
+        }
+    } finally {
+        form.value.processing = false;
     }
 };
 
-const deleteClass = (id: number) => {
+const deleteClass = async (id: number) => {
     if (confirm('Are you sure you want to delete this class?')) {
-        router.delete(`/master/classes/${id}`);
+        try {
+            await axios.delete(`/api/school-classes/${id}`);
+            await fetchClasses();
+        } catch (error) {
+            console.error('Failed to delete class', error);
+        }
     }
 };
 
 const breadcrumbs = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Master Data', href: '#' },
+    { title: 'Master Data', href: '/master' },
     { title: 'Data Kelas', href: '/master/classes' },
 ];
 </script>
 
 <template>
-    <Head title="Data Kelas" />
-
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-8">
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -91,7 +125,7 @@ const breadcrumbs = [
                 </div>
 
                 <button
-                    @click="openCreate"
+                    @click="openCreateDialog"
                     class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
                     + Add Class
@@ -99,7 +133,7 @@ const breadcrumbs = [
             </div>
 
             <div class="rounded-xl border bg-card p-6 shadow-sm">
-                <div v-if="props.classes.length" class="overflow-x-auto">
+                <div v-if="classes.length" class="overflow-x-auto">
                     <table class="w-full border-collapse text-sm">
                         <thead>
                             <tr class="border-b text-left text-muted-foreground">
@@ -119,7 +153,7 @@ const breadcrumbs = [
                                 <td class="py-4 px-4 text-right">
                                     <div class="flex justify-end gap-2">
                                         <button
-                                            @click="openEdit(schoolClass)"
+                                            @click="openEditDialog(schoolClass)"
                                             class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                                         >
                                             Edit
@@ -144,7 +178,7 @@ const breadcrumbs = [
                         You haven’t added any classes yet. Start by adding your first class.
                     </p>
                     <button
-                        @click="openCreate"
+                        @click="openCreateDialog"
                         class="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                     >
                         Add first class
@@ -173,23 +207,23 @@ const breadcrumbs = [
                             placeholder="e.g., X RPL 1"
                             required
                         />
-                        <InputError :message="form.errors.name" />
+                        <InputError :message="form.errors.name" class="mt-2" />
                     </div>
 
                     <DialogFooter>
                         <button
                             type="button"
                             @click="closeDialog"
-                            class="inline-flex items-center justify-center rounded-md border border-input bg-transparent px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground"
+                            class="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                             :disabled="form.processing"
                         >
-                            Save
+                            {{ editingClass ? 'Save Changes' : 'Create Class' }}
                         </button>
                     </DialogFooter>
                 </form>
