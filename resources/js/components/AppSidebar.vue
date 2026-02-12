@@ -11,7 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { BookOpen, ClipboardCheck, Folder, LayoutGrid } from 'lucide-vue-next';
@@ -20,13 +20,38 @@ import AppLogo from './AppLogo.vue';
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard(),
+        href: '/dashboard',
         icon: LayoutGrid,
     },
     {
         title: 'Attendance',
         href: '/attendance',
         icon: ClipboardCheck,
+        items: [
+            {
+                title: 'Data Siswa',
+                href: '/attendance/students',
+            },
+            {
+                title: 'Presence',
+                href: '/attendance/presence',
+            },
+            {
+                title: 'Rekap Absen',
+                href: '/attendance/recap',
+            },
+        ],
+    },
+    {
+        title: 'Master Data',
+        href: '/master',
+        icon: Folder,
+        items: [
+            {
+                title: 'Data Kelas',
+                href: '/master/classes',
+            },
+        ],
     },
 ];
 
@@ -50,7 +75,7 @@ const footerNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
+                        <Link href="/dashboard">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
