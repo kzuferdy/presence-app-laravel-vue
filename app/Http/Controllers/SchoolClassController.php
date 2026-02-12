@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Str;
 
 class SchoolClassController extends Controller
@@ -15,9 +14,7 @@ class SchoolClassController extends Controller
     public function index()
     {
         $classes = SchoolClass::latest()->get();
-        return Inertia::render('Master/Classes/Index', [
-            'classes' => $classes
-        ]);
+        return response()->json($classes);
     }
 
     /**
@@ -29,12 +26,12 @@ class SchoolClassController extends Controller
             'name' => 'required|string|max:255|unique:school_classes,name',
         ]);
 
-        SchoolClass::create([
+        $class = SchoolClass::create([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
         ]);
 
-        return redirect()->route('classes.index');
+        return response()->json($class, 201);
     }
 
     /**
@@ -51,7 +48,7 @@ class SchoolClassController extends Controller
             'slug' => Str::slug($request->name),
         ]);
 
-        return redirect()->route('classes.index');
+        return response()->json($class);
     }
 
     /**
@@ -60,6 +57,6 @@ class SchoolClassController extends Controller
     public function destroy(SchoolClass $class)
     {
         $class->delete();
-        return redirect()->route('classes.index');
+        return response()->json(null, 204);
     }
 }
