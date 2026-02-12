@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { usePage } from '@inertiajs/vue3';
 
 interface Props {
     variant?: 'header' | 'sidebar';
 }
 
+import { ref } from 'vue';
+
 defineProps<Props>();
 
-const isOpen = usePage().props.sidebarOpen;
+const isOpen = ref(true); // Default to open or manage state globally if needed
 </script>
 
 <template>
