@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import { edit } from '@/routes/profile';
-import { send } from '@/routes/verification';
-import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import axios from 'axios';
+import { useAuth } from '@/composables/useAuth';
 
 import DeleteUser from '@/components/DeleteUser.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -15,27 +14,54 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem } from '@/types';
 
 interface Props {
-    mustVerifyEmail: boolean;
+    mustVerifyEmail?: boolean;
     status?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Profile settings',
-        href: edit().url,
+        href: '/settings/profile',
     },
 ];
 
-const page = usePage();
-const user = page.props.auth.user;
+const { user, fetchUser } = useAuth();
+const processing = ref(false);
+const recentlySuccessful = ref(false);
+const errors = ref<Record<string, string>>({});
+
+const form = ref({
+    name: user.value?.name || '',
+    email: user.value?.email || '',
+});
+
+const updateProfile = async () => {
+    processing.value = true;
+    errors.value = {};
+    recentlySuccessful.value = false;
+
+    try {
+        const response = await axios.patch('/api/profile', form.value);
+        // Refresh user data if name/email changed
+        await fetchUser();
+        recentlySuccessful.value = true;
+        setTimeout(() => recentlySuccessful.value = false, 2000);
+    } catch (error: any) {
+        if (error.response && error.response.data.errors) {
+            errors.value = error.response.data.errors;
+        } else {
+            console.error(error);
+        }
+    } finally {
+        processing.value = false;
+    }
+};
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Profile settings" />
-
         <h1 class="sr-only">Profile Settings</h1>
 
         <SettingsLayout>
@@ -45,18 +71,14 @@ const user = page.props.auth.user;
                     description="Update your name and email address"
                 />
 
-                <Form
-                    v-bind="ProfileController.update.form()"
-                    class="space-y-6"
-                    v-slot="{ errors, processing, recentlySuccessful }"
-                >
+                <form @submit.prevent="updateProfile" class="space-y-6">
                     <div class="grid gap-2">
                         <Label for="name">Name</Label>
                         <Input
                             id="name"
                             class="mt-1 block w-full"
                             name="name"
-                            :default-value="user.name"
+                            v-model="form.name"
                             required
                             autocomplete="name"
                             placeholder="Full name"
@@ -71,33 +93,12 @@ const user = page.props.auth.user;
                             type="email"
                             class="mt-1 block w-full"
                             name="email"
-                            :default-value="user.email"
+                            v-model="form.email"
                             required
                             autocomplete="username"
                             placeholder="Email address"
                         />
                         <InputError class="mt-2" :message="errors.email" />
-                    </div>
-
-                    <div v-if="mustVerifyEmail && !user.email_verified_at">
-                        <p class="-mt-4 text-sm text-muted-foreground">
-                            Your email address is unverified.
-                            <Link
-                                :href="send()"
-                                as="button"
-                                class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                            >
-                                Click here to resend the verification email.
-                            </Link>
-                        </p>
-
-                        <div
-                            v-if="status === 'verification-link-sent'"
-                            class="mt-2 text-sm font-medium text-green-600"
-                        >
-                            A new verification link has been sent to your email
-                            address.
-                        </div>
                     </div>
 
                     <div class="flex items-center gap-4">
@@ -121,10 +122,11 @@ const user = page.props.auth.user;
                             </p>
                         </Transition>
                     </div>
-                </Form>
+                </form>
             </div>
 
-            <DeleteUser />
+            <!-- DeleteUser component may need refactor too, but for now ignoring -->
+            <!-- <DeleteUser /> -->
         </SettingsLayout>
     </AppLayout>
 </template>
