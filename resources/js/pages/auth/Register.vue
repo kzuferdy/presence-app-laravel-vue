@@ -1,132 +1,161 @@
 <script setup lang="ts">
-import InputError from '@/components/InputError.vue'
-import TextLink from '@/components/TextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Spinner } from '@/components/ui/spinner'
-import { login } from '@/routes'
-import { store } from '@/routes/register'
-import { Form, Head } from '@inertiajs/vue3'
+import InputError from '@/components/InputError.vue'
+import AuthLayout from '@/layouts/AuthLayout.vue'
+import { ref } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
+import axios from 'axios'
+import { useAuth } from '@/composables/useAuth'
+
+const form = ref({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    processing: false,
+    errors: {} as Record<string, string>,
+})
+
+const router = useRouter()
+const { fetchUser } = useAuth()
+
+const submit = async () => {
+    form.value.processing = true
+    form.value.errors = {}
+
+    try {
+        const response = await axios.post('/api/register', {
+            name: form.value.name,
+            email: form.value.email,
+            password: form.value.password,
+            password_confirmation: form.value.password_confirmation,
+        })
+        
+        localStorage.setItem('token', response.data.token)
+        await fetchUser()
+        router.push('/dashboard')
+    } catch (error: any) {
+        if (error.response && error.response.data.errors) {
+            form.value.errors = error.response.data.errors
+        } else {
+             console.error(error)
+        }
+    } finally {
+        form.value.processing = false
+    }
+}
 </script>
 
 <template>
-  <Head title="Register" />
-
   <div class="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2">
-     <div class="relative hidden lg:flex flex-col justify-center items-center bg-slate-900 overflow-hidden order-last">
-        <div class="absolute inset-0 bg-gradient-to-tl from-indigo-600 to-violet-600 opacity-90"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white rounded-full mix-blend-overlay filter blur-[100px] opacity-20"></div>
+    <!-- Left Side: Decorative & Info -->
+    <div class="relative hidden lg:flex flex-col justify-center items-center bg-slate-900 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-600 opacity-90"></div>
+        <div class="absolute -top-24 -left-24 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
         <div class="relative z-10 p-12 text-white max-w-lg text-center">
-             <h1 class="mb-6 text-5xl font-bold tracking-tight leading-tight">
-                Join the Club 🚀
+            <h1 class="mb-6 text-5xl font-bold tracking-tight leading-tight">
+                Join us today! 🚀
             </h1>
-             <p class="text-lg text-indigo-100 font-light leading-relaxed">
-                Create an account to start using the platform and manage everything
-                from one place.
-             </p>
+            <p class="text-lg text-indigo-100 font-light leading-relaxed">
+                Create an account to start managing your data efficienty. 
+                Experience the power of our modern stack.
+            </p>
         </div>
     </div>
 
+    <!-- Right Side: Register Form -->
     <div class="flex items-center justify-center bg-slate-50 px-6 py-12">
-      <div class="w-full max-w-[480px] bg-white p-10 rounded-3xl shadow-2xl shadow-indigo-100 border border-slate-100">
+      <div class="w-full max-w-[420px] bg-white p-10 rounded-3xl shadow-2xl shadow-indigo-100 border border-slate-100">
 
-        <div class="mb-8">
-            <h2 class="text-3xl font-bold text-slate-900 tracking-tight">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
             Create an account
             </h2>
             <p class="mt-2 text-sm text-slate-500">
-            Enter your credentials to continue
+            Sign up to get started
             </p>
         </div>
 
-        <Form
-          v-bind="store.form()"
-          :reset-on-success="['password', 'password_confirmation']"
-          v-slot="{ errors, processing }"
-          class="space-y-5"
-        >
-          <div class="space-y-2">
-            <Label for="name" class="text-slate-700 font-medium">Full Name</Label>
-            <Input
-              id="name"
-              type="text"
-              name="name"
-              required
-              autofocus
-              autocomplete="name"
-              placeholder="e.g. Ferdy Mohamad"
-              class="h-11 px-4 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-            />
-            <InputError :message="errors.name" />
-          </div>
-
-          <div class="space-y-2">
-            <Label for="email" class="text-slate-700 font-medium">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              name="email"
-              required
-              autocomplete="email"
-              placeholder="name@company.com"
-              class="h-11 px-4 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-            />
-            <InputError :message="errors.email" />
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-             <div class="space-y-2">
-                <Label for="password" class="text-slate-700 font-medium">Password</Label>
+        <form @submit.prevent="submit" class="space-y-5">
+            <div>
+                <Label for="name" class="text-slate-700">Full Name</Label>
                 <Input
-                id="password"
-                type="password"
-                name="password"
-                required
-                autocomplete="new-password"
-                placeholder="••••••••"
-                class="h-11 px-4 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                    id="name"
+                    type="text"
+                    class="mt-2 block w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50"
+                    v-model="form.name"
+                    required
+                    autofocus
+                    autocomplete="name"
+                    placeholder="John Doe"
                 />
-                <InputError :message="errors.password" />
+                <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
-            <div class="space-y-2">
-                <Label for="password_confirmation" class="text-slate-700 font-medium">Confirm</Label>
+            <div>
+                <Label for="email" class="text-slate-700">Email address</Label>
                 <Input
-                id="password_confirmation"
-                type="password"
-                name="password_confirmation"
-                required
-                autocomplete="new-password"
-                placeholder="••••••••"
-                class="h-11 px-4 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                    id="email"
+                    type="email"
+                    class="mt-2 block w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50"
+                    v-model="form.email"
+                    required
+                    autocomplete="username"
+                    placeholder="name@example.com"
                 />
-                <InputError :message="errors.password_confirmation" />
+                <InputError class="mt-2" :message="form.errors.email" />
             </div>
-          </div>
 
-          <div class="text-xs text-slate-500 leading-relaxed">
-             By creating an account, you agree to our <span class="text-indigo-600 cursor-pointer">Terms of Service</span> and <span class="text-indigo-600 cursor-pointer">Privacy Policy</span>.
-          </div>
+            <div>
+                <Label for="password" class="text-slate-700">Password</Label>
+                <Input
+                    id="password"
+                    type="password"
+                    class="mt-2 block w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50"
+                    v-model="form.password"
+                    required
+                    autocomplete="new-password"
+                    placeholder="••••••••"
+                />
+                <InputError class="mt-2" :message="form.errors.password" />
+            </div>
 
-          <Button
-            type="submit"
-            class="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
-            :disabled="processing"
-            data-test="register-user-button"
-          >
-            <Spinner v-if="processing" class="mr-2 h-4 w-4" />
-            <span v-else>Create Account</span>
-          </Button>
-        </Form>
+            <div>
+                <Label for="password_confirmation" class="text-slate-700">Confirm Password</Label>
+                <Input
+                    id="password_confirmation"
+                    type="password"
+                    class="mt-2 block w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50"
+                    v-model="form.password_confirmation"
+                    required
+                    autocomplete="new-password"
+                    placeholder="••••••••"
+                />
+                <InputError class="mt-2" :message="form.errors.password_confirmation" />
+            </div>
 
-        <div class="mt-8 pt-6 border-t border-slate-100 text-center text-sm text-slate-500">
-          Already have an account?
-          <TextLink :href="login()" class="ml-1 font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
-            Log in
-          </TextLink>
-        </div>
+            <Button
+                class="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-200 transition-all duration-200"
+                :class="{ 'opacity-70 cursor-not-allowed': form.processing }"
+                :disabled="form.processing"
+            >
+                Create account
+            </Button>
+
+            <div class="text-center text-sm text-slate-500 mt-6">
+                Already have an account?
+                <RouterLink
+                    to="/login"
+                    class="font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+                >
+                    Sign in
+                </RouterLink>
+            </div>
+        </form>
       </div>
     </div>
   </div>
