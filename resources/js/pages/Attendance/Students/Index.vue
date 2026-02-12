@@ -1,26 +1,45 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
+import axios from 'axios';
 
-const props = defineProps<{
-    students: {
+interface Student {
+    id: number;
+    name: string;
+    nis: string;
+    class: string;
+    photo: string | null;
+    address: string | null;
+    school_class?: {
         id: number;
         name: string;
-        nis: string;
-        class: string;
-        photo: string | null;
-        address: string | null;
-        school_class?: {
-            id: number;
-            name: string;
-        } | null;
-    }[];
-}>();
+    } | null;
+}
 
-const deleteStudent = (id: number) => {
+const students = ref([] as Student[]);
+
+const fetchStudents = async () => {
+    try {
+        const response = await axios.get('/api/students');
+        students.value = response.data;
+    } catch (error) {
+        console.error('Failed to fetch students', error);
+    }
+};
+
+onMounted(() => {
+    fetchStudents();
+});
+
+const deleteStudent = async (id: number) => {
     if (confirm('Are you sure you want to delete this student?')) {
-        router.delete(`/attendance/students/${id}`);
+        try {
+            await axios.delete(`/api/students/${id}`);
+            await fetchStudents();
+        } catch (error) {
+            console.error('Failed to delete student', error);
+        }
     }
 };
 
@@ -32,8 +51,6 @@ const breadcrumbs = [
 </script>
 
 <template>
-    <Head title="Data Siswa" />
-
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-8">
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -42,16 +59,16 @@ const breadcrumbs = [
                     <p class="text-sm text-muted-foreground">Manage student data here.</p>
                 </div>
 
-                <Link
-                    href="/attendance/students/create"
+                <RouterLink
+                    to="/attendance/students/create"
                     class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
                     + Add Student
-                </Link>
+                </RouterLink>
             </div>
 
             <div class="rounded-xl border bg-card p-6 shadow-sm">
-                <div v-if="props.students.length" class="overflow-x-auto">
+                <div v-if="students.length" class="overflow-x-auto">
                     <table class="w-full border-collapse text-sm">
                         <thead>
                             <tr class="border-b text-left text-muted-foreground">
@@ -88,12 +105,12 @@ const breadcrumbs = [
                                 <td class="py-4 px-4 text-muted-foreground">{{ student.address || '-' }}</td>
                                 <td class="py-4 px-4 text-right">
                                     <div class="flex justify-end gap-2">
-                                        <Link
-                                            :href="`/attendance/students/${student.id}/edit`"
+                                        <RouterLink
+                                            :to="`/attendance/students/${student.id}/edit`"
                                             class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                                         >
                                             Edit
-                                        </Link>
+                                        </RouterLink>
                                         <button
                                             @click="deleteStudent(student.id)"
                                             class="text-sm font-medium text-red-600 hover:text-red-500"
@@ -113,12 +130,12 @@ const breadcrumbs = [
                     <p class="max-w-sm text-sm text-muted-foreground">
                         You haven’t added any students yet. Start by adding your first student.
                     </p>
-                    <Link
-                        href="/attendance/students/create"
+                    <RouterLink
+                        to="/attendance/students/create"
                         class="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                     >
                         Add first student
-                    </Link>
+                    </RouterLink>
                 </div>
             </div>
         </div>
