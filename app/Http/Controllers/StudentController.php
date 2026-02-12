@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SchoolClass;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +14,7 @@ class StudentController extends Controller
      */
     public function index()
     {
-        $students = Student::latest()->get();
+        $students = Student::with('schoolClass')->latest()->get();
         return Inertia::render('Attendance/Students/Index', [
             'students' => $students
         ]);
@@ -24,7 +25,9 @@ class StudentController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Attendance/Students/FormCreate');
+        return Inertia::render('Attendance/Students/FormCreate', [
+            'classes' => SchoolClass::all()
+        ]);
     }
 
     /**
@@ -32,12 +35,20 @@ class StudentController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->school_class_id) {
+            $schoolClass = SchoolClass::find($request->school_class_id);
+            if ($schoolClass) {
+                $request->merge(['class' => $schoolClass->name]);
+            }
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'nis' => 'required|string|unique:students,nis',
             'class' => 'required|string|max:50',
             'photo' => 'nullable|image|max:2048',
             'address' => 'nullable|string',
+            'school_class_id' => 'nullable|exists:school_classes,id',
         ]);
 
         $data = $request->all();
@@ -58,7 +69,8 @@ class StudentController extends Controller
     public function edit(Student $student)
     {
         return Inertia::render('Attendance/Students/FormEdit', [
-            'student' => $student
+            'student' => $student,
+            'classes' => SchoolClass::all()
         ]);
     }
 
@@ -67,12 +79,20 @@ class StudentController extends Controller
      */
     public function update(Request $request, Student $student)
     {
+        if ($request->school_class_id) {
+            $schoolClass = SchoolClass::find($request->school_class_id);
+            if ($schoolClass) {
+                $request->merge(['class' => $schoolClass->name]);
+            }
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'nis' => 'required|string|unique:students,nis,' . $student->id,
             'class' => 'required|string|max:50',
             'photo' => 'nullable|image|max:2048',
             'address' => 'nullable|string',
+            'school_class_id' => 'nullable|exists:school_classes,id',
         ]);
 
         $data = $request->all();
