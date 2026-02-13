@@ -12,12 +12,40 @@ Route::middleware(['auth:sanctum'])->group(function () {
         return $request->user();
     });
 
-    Route::apiResource('school-classes', \App\Http\Controllers\SchoolClassController::class);
-    Route::apiResource('students', \App\Http\Controllers\StudentController::class);
-    Route::patch('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
-    Route::delete('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'destroy']);
+    // Dashboard - Accessible by all roles
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index']);
+        Route::patch('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
+        Route::put('/password', [\App\Http\Controllers\Api\ProfileController::class, 'updatePassword']);
+        Route::delete('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'destroy']);
+    });
 
-    Route::get('/attendance', [\App\Http\Controllers\AttendanceController::class, 'create']);
-    Route::post('/attendance', [\App\Http\Controllers\AttendanceController::class, 'store']);
-    Route::get('/attendance/recap', [\App\Http\Controllers\AttendanceReportController::class, 'index']);
+    // Attendance - Create/Store (Admin & Teacher)
+    Route::middleware(['role:admin,teacher'])->group(function () {
+        Route::get('/attendance', [\App\Http\Controllers\AttendanceController::class, 'create']);
+        Route::post('/attendance', [\App\Http\Controllers\AttendanceController::class, 'store']);
+    });
+
+    // Attendance Recap - (Admin, Principal, Teacher?) 
+    // User said Teacher: "only see menu attendance and dashboard". 
+    // Principal: "read only master data". 
+    // Usually Principal needs to see reports. Admin too.
+    Route::middleware(['role:admin,principal'])->group(function () {
+         Route::get('/attendance/recap', [\App\Http\Controllers\AttendanceReportController::class, 'index']);
+    });
+
+    // Master Data - Read Only (Admin & Principal & Teacher)
+    // Teacher needs read access for Attendance features (selecting class/year, viewing student list)
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::apiResource('students', \App\Http\Controllers\StudentController::class)->only(['index', 'show']);
+        Route::apiResource('school-classes', \App\Http\Controllers\SchoolClassController::class)->only(['index', 'show']);
+        Route::apiResource('academic-years', \App\Http\Controllers\AcademicYearController::class)->only(['index', 'show']);
+    });
+
+    // Master Data - Full Access (Admin Only)
+    Route::middleware(['role:admin'])->group(function () {
+        Route::apiResource('students', \App\Http\Controllers\StudentController::class)->except(['index', 'show']);
+        Route::apiResource('school-classes', \App\Http\Controllers\SchoolClassController::class)->except(['index', 'show']);
+        Route::apiResource('academic-years', \App\Http\Controllers\AcademicYearController::class)->except(['index', 'show']);
+    });
 });
