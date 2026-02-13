@@ -13,9 +13,12 @@ import {
 } from '@/components/ui/sidebar';
 
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, ClipboardCheck, Folder, LayoutGrid } from 'lucide-vue-next';
+import { RouterLink } from 'vue-router';
+import { BookOpen, ClipboardCheck, Folder, LayoutGrid, LogOut } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { useAuth } from '@/composables/useAuth';
+
+const { logout } = useAuth();
 
 const mainNavItems: NavItem[] = [
     {
@@ -75,9 +78,9 @@ const footerNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link href="/dashboard">
+                        <RouterLink to="/dashboard">
                             <AppLogo />
-                        </Link>
+                        </RouterLink>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

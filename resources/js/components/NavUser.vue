@@ -11,16 +11,18 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import { usePage } from '@inertiajs/vue3';
 import { ChevronsUpDown } from 'lucide-vue-next';
 import UserMenuContent from './UserMenuContent.vue';
+import { useAuth } from '@/composables/useAuth';
+import { onMounted } from 'vue';
 
-const page = usePage();
-const user = page.props.auth.user;
+const { user, fetchUser } = useAuth();
 const { isMobile, state } = useSidebar();
-</script>
 
-<template>
+onMounted(() => {
+    fetchUser();
+});
+</script><template>
     <SidebarMenu>
         <SidebarMenuItem>
             <DropdownMenu>
@@ -29,6 +31,7 @@ const { isMobile, state } = useSidebar();
                         size="lg"
                         class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         data-test="sidebar-menu-button"
+                        v-if="user"
                     >
                         <UserInfo :user="user" />
                         <ChevronsUpDown class="ml-auto size-4" />

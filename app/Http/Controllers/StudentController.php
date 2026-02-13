@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 
 class StudentController extends Controller
 {
@@ -15,19 +14,7 @@ class StudentController extends Controller
     public function index()
     {
         $students = Student::with('schoolClass')->latest()->get();
-        return Inertia::render('Attendance/Students/Index', [
-            'students' => $students
-        ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return Inertia::render('Attendance/Students/FormCreate', [
-            'classes' => SchoolClass::all()
-        ]);
+        return response()->json($students);
     }
 
     /**
@@ -58,20 +45,17 @@ class StudentController extends Controller
             $data['photo'] = $path;
         }
 
-        Student::create($data);
+        $student = Student::create($data);
 
-        return redirect()->route('students.index');
+        return response()->json($student, 201);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Display the specified resource.
      */
-    public function edit(Student $student)
+    public function show(Student $student)
     {
-        return Inertia::render('Attendance/Students/FormEdit', [
-            'student' => $student,
-            'classes' => SchoolClass::all()
-        ]);
+        return response()->json($student->load('schoolClass'));
     }
 
     /**
@@ -107,7 +91,7 @@ class StudentController extends Controller
 
         $student->update($data);
 
-        return redirect()->route('students.index');
+        return response()->json($student);
     }
 
     /**
@@ -119,6 +103,6 @@ class StudentController extends Controller
             \Illuminate\Support\Facades\Storage::disk('public')->delete($student->photo);
         }
         $student->delete();
-        return redirect()->route('students.index');
+        return response()->json(null, 204);
     }
 }

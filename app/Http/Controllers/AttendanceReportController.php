@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Student;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Carbon\Carbon;
 
 class AttendanceReportController extends Controller
@@ -19,7 +18,7 @@ class AttendanceReportController extends Controller
                   ->whereYear('date', $year);
         }])->orderBy('name')->get();
 
-        return Inertia::render('Attendance/Recap/Index', [
+        return response()->json([
             'students' => $students,
             'filters' => [
                 'month' => (int)$month,

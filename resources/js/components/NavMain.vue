@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
+import { RouterLink } from 'vue-router';
 import { ChevronRight } from 'lucide-vue-next';
 
 defineProps<{
@@ -61,9 +61,9 @@ const { urlIsActive } = useActiveUrl();
                                     as-child
                                     :is-active="urlIsActive(subItem.href)"
                                 >
-                                    <Link :href="subItem.href">
+                                    <RouterLink :to="subItem.href">
                                         <span>{{ subItem.title }}</span>
-                                    </Link>
+                                    </RouterLink>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                         </SidebarMenuSub>

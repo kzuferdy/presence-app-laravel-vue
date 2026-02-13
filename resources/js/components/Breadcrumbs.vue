@@ -7,7 +7,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Link } from '@inertiajs/vue3';
+import { RouterLink } from 'vue-router';
 
 interface BreadcrumbItemType {
     title: string;
@@ -29,9 +29,9 @@ defineProps<{
                     </template>
                     <template v-else>
                         <BreadcrumbLink as-child>
-                            <Link :href="item.href ?? '#'">{{
+                            <RouterLink :to="item.href ?? '#'">{{
                                 item.title
-                            }}</Link>
+                            }}</RouterLink>
                         </BreadcrumbLink>
                     </template>
                 </BreadcrumbItem>

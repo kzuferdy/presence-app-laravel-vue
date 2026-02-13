@@ -1,42 +1,58 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
-import { format } from 'date-fns';
+import { ref, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 
-const props = defineProps<{
-    students: {
-        id: number;
-        name: string;
-        nis: string;
-        attendances: {
-            id: number;
-            date: string;
-            status: 'present' | 'sick' | 'permission' | 'alpha';
-        }[];
-    }[];
-    filters: {
-        month: number;
-        year: number;
-    };
-}>();
+type Attendance = {
+    id: number;
+    date: string;
+    status: 'present' | 'sick' | 'permission' | 'alpha';
+};
+
+type Student = {
+    id: number;
+    name: string;
+    nis: string;
+    attendances: Attendance[];
+};
+
+const route = useRoute();
+const router = useRouter();
+
+const students = ref<Student[]>([]);
 
 const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const selectedMonth = ref(props.filters.month);
-const selectedYear = ref(props.filters.year);
+const currentDate = new Date();
+const selectedMonth = ref(Number(route.query.month) || currentDate.getMonth() + 1);
+const selectedYear = ref(Number(route.query.year) || currentDate.getFullYear());
+
+const fetchData = async () => {
+    try {
+        const response = await axios.get('/api/attendance/recap', {
+            params: {
+                month: selectedMonth.value,
+                year: selectedYear.value,
+            }
+        });
+        students.value = response.data.students;
+    } catch (error) {
+        console.error('Failed to fetch attendance recap:', error);
+    }
+};
 
 const updateFilters = () => {
-    router.get('/attendance/recap', {
-        month: selectedMonth.value,
-        year: selectedYear.value,
-    }, {
-        preserveState: true,
-        preserveScroll: true,
+    router.replace({
+        query: {
+            month: selectedMonth.value,
+            year: selectedYear.value,
+        }
     });
+    fetchData();
 };
 
 const getDaysInMonth = (month: number, year: number) => {
@@ -50,9 +66,13 @@ watch([selectedMonth, selectedYear], () => {
     days.value = Array.from({ length: daysCount }, (_, i) => i + 1);
 }, { immediate: true });
 
-const getStatus = (student: any, day: number) => {
+onMounted(() => {
+    fetchData();
+});
+
+const getStatus = (student: Student, day: number) => {
     const date = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const attendance = student.attendances.find((a: any) => a.date === date);
+    const attendance = student.attendances.find((a) => a.date === date);
     return attendance ? attendance.status.charAt(0).toUpperCase() : '-';
 };
 
@@ -74,8 +94,6 @@ const breadcrumbs = [
 </script>
 
 <template>
-    <Head title="Rekap Absen" />
-
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-8">
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">

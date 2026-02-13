@@ -13,7 +13,7 @@ class AttendanceController extends Controller
             $query->whereDate('date', now());
         }])->orderBy('name')->get();
 
-        return \Inertia\Inertia::render('Attendance/Presence/Index', [
+        return response()->json([
             'students' => $students,
             'date' => now()->format('Y-m-d'),
         ]);
@@ -37,6 +37,6 @@ class AttendanceController extends Controller
             ]
         );
 
-        return back();
+        return response()->json(['message' => 'Attendance recorded'], 200);
     }
 }

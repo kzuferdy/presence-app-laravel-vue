@@ -1,24 +1,13 @@
-import { toUrl } from '@/lib/utils';
-import type { InertiaLinkProps } from '@inertiajs/vue3';
-import { usePage } from '@inertiajs/vue3';
-import { computed, readonly } from 'vue';
-
-const page = usePage();
-const currentUrlReactive = computed(
-    () => new URL(page.url, window?.location.origin).pathname,
-);
+import { useRoute } from 'vue-router';
 
 export function useActiveUrl() {
-    function urlIsActive(
-        urlToCheck: NonNullable<InertiaLinkProps['href']>,
-        currentUrl?: string,
-    ) {
-        const urlToCompare = currentUrl ?? currentUrlReactive.value;
-        return toUrl(urlToCheck) === urlToCompare;
+    const route = useRoute();
+
+    function urlIsActive(href: string) {
+        return route.path === href || route.path.startsWith(href + '/');
     }
 
     return {
-        currentUrl: readonly(currentUrlReactive),
         urlIsActive,
     };
 }
