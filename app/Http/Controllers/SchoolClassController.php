@@ -11,9 +11,16 @@ class SchoolClassController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $classes = SchoolClass::latest()->get();
+        $user = $request->user();
+
+        if ($user && $user->role === 'teacher') {
+            $classes = $user->classes()->orderBy('name')->get();
+        } else {
+            $classes = SchoolClass::orderBy('name')->get();
+        }
+        
         return response()->json($classes);
     }
 
@@ -58,5 +65,13 @@ class SchoolClassController extends Controller
     {
         $class->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(SchoolClass $schoolClass)
+    {
+        return response()->json($schoolClass);
     }
 }
