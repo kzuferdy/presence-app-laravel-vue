@@ -58,6 +58,21 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('../pages/Master/Classes/Index.vue'),
             },
             {
+                path: 'subjects',
+                name: 'subjects.index',
+                component: () => import('../pages/Master/Subjects/Index.vue'),
+            },
+            {
+                path: 'schedules',
+                name: 'schedules.index',
+                component: () => import('../pages/Master/Schedules/Index.vue'),
+            },
+            {
+                path: 'teachers',
+                name: 'teachers.index',
+                component: () => import('../pages/Master/Teachers/Index.vue'),
+            },
+            {
                 path: 'academic-years',
                 name: 'academic-years.index',
                 component: () => import('../pages/Master/AcademicYears/Index.vue'),

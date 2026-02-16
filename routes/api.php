@@ -30,7 +30,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // User said Teacher: "only see menu attendance and dashboard". 
     // Principal: "read only master data". 
     // Usually Principal needs to see reports. Admin too.
-    Route::middleware(['role:admin,principal'])->group(function () {
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
          Route::get('/attendance/recap', [\App\Http\Controllers\AttendanceReportController::class, 'index']);
     });
 
@@ -40,6 +40,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('students', \App\Http\Controllers\StudentController::class)->only(['index', 'show']);
         Route::apiResource('school-classes', \App\Http\Controllers\SchoolClassController::class)->only(['index', 'show']);
         Route::apiResource('academic-years', \App\Http\Controllers\AcademicYearController::class)->only(['index', 'show']);
+        Route::apiResource('subjects', \App\Http\Controllers\SubjectController::class)->only(['index', 'show']);
+        Route::apiResource('schedules', \App\Http\Controllers\ScheduleController::class)->only(['index', 'show']);
     });
 
     // Master Data - Full Access (Admin Only)
@@ -47,5 +49,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('students', \App\Http\Controllers\StudentController::class)->except(['index', 'show']);
         Route::apiResource('school-classes', \App\Http\Controllers\SchoolClassController::class)->except(['index', 'show']);
         Route::apiResource('academic-years', \App\Http\Controllers\AcademicYearController::class)->except(['index', 'show']);
+        
+        Route::apiResource('teachers', \App\Http\Controllers\TeacherController::class);
+        Route::apiResource('subjects', \App\Http\Controllers\SubjectController::class)->except(['index', 'show']);
+        Route::apiResource('schedules', \App\Http\Controllers\ScheduleController::class)->except(['index', 'show']);
     });
 });
+
