@@ -108,6 +108,13 @@ const deleteClass = async (id: number) => {
     }
 };
 
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { useAuth } from '@/composables/useAuth';
+
+const { user } = useAuth();
+const isPrincipal = computed(() => user.value?.role === 'principal');
+
 const breadcrumbs = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Master Data', href: '/master' },
@@ -125,6 +132,7 @@ const breadcrumbs = [
                 </div>
 
                 <button
+                    v-if="!isPrincipal"
                     @click="openCreateDialog"
                     class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
@@ -139,7 +147,7 @@ const breadcrumbs = [
                             <tr class="border-b text-left text-muted-foreground">
                                 <th class="py-3 px-4">Name</th>
                                 <th class="py-3 px-4">Slug</th>
-                                <th class="py-3 px-4 text-right">Actions</th>
+                                <th v-if="!isPrincipal" class="py-3 px-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -150,7 +158,7 @@ const breadcrumbs = [
                             >
                                 <td class="py-4 px-4 font-medium">{{ schoolClass.name }}</td>
                                 <td class="py-4 px-4 text-muted-foreground">{{ schoolClass.slug }}</td>
-                                <td class="py-4 px-4 text-right">
+                                <td v-if="!isPrincipal" class="py-4 px-4 text-right">
                                     <div class="flex justify-end gap-2">
                                         <button
                                             @click="openEditDialog(schoolClass)"
