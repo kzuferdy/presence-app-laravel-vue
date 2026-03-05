@@ -17,10 +17,16 @@ type Student = {
     attendances: Attendance[];
 };
 
+type Subject = {
+    id: number;
+    name: string;
+};
+
 const route = useRoute();
 const router = useRouter();
 
 const students = ref<Student[]>([]);
+const subjects = ref<Subject[]>([]);
 
 const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -30,6 +36,22 @@ const months = [
 const currentDate = new Date();
 const selectedMonth = ref(Number(route.query.month) || currentDate.getMonth() + 1);
 const selectedYear = ref(Number(route.query.year) || currentDate.getFullYear());
+const selectedSubject = ref(route.query.subject_id || '');
+
+const fetchSubjects = async () => {
+    try {
+        const response = await axios.get('/api/subjects');
+        subjects.value = response.data;
+        // If no subject selected and subjects exist, select first? 
+        // Or let user select.
+        if (!selectedSubject.value && subjects.value.length > 0) {
+           // selectedSubject.value = subjects.value[0].id.toString();
+           // updateFilters();
+        }
+    } catch (error) {
+        console.error('Failed to fetch subjects', error);
+    }
+}
 
 const fetchData = async () => {
     try {
@@ -37,6 +59,7 @@ const fetchData = async () => {
             params: {
                 month: selectedMonth.value,
                 year: selectedYear.value,
+                subject_id: selectedSubject.value,
             }
         });
         students.value = response.data.students;
@@ -50,6 +73,7 @@ const updateFilters = () => {
         query: {
             month: selectedMonth.value,
             year: selectedYear.value,
+            subject_id: selectedSubject.value,
         }
     });
     fetchData();
@@ -67,6 +91,7 @@ watch([selectedMonth, selectedYear], () => {
 }, { immediate: true });
 
 onMounted(() => {
+    fetchSubjects();
     fetchData();
 });
 
@@ -99,10 +124,20 @@ const breadcrumbs = [
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold tracking-tight">Rekap Absen</h1>
-                    <p class="text-sm text-muted-foreground">Monthly attendance recap.</p>
+                    <p class="text-sm text-muted-foreground">Monthly attendance recap per subject.</p>
                 </div>
 
                 <div class="flex items-center gap-2">
+                     <select
+                        v-model="selectedSubject"
+                        @change="updateFilters"
+                        class="rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                        <option value="" disabled>Select Subject</option>
+                        <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+                            {{ subject.name }}
+                        </option>
+                    </select>
                     <select
                         v-model="selectedMonth"
                         @change="updateFilters"
@@ -159,6 +194,9 @@ const breadcrumbs = [
                 
                 <div v-if="!students.length" class="p-8 text-center text-muted-foreground">
                     No students found.
+                </div>
+                 <div v-if="!selectedSubject" class="p-4 text-center text-amber-600 bg-amber-50">
+                    Please select a Subject to view attendance.
                 </div>
             </div>
 

@@ -54,6 +54,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            'role' => 'teacher',
         ]);
 
         $token = $user->createToken('web')->plainTextToken;

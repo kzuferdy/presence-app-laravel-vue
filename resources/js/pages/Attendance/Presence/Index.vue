@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import * as faceapi from 'face-api.js';
 
@@ -26,20 +27,42 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const isModelLoaded = ref(false);
 const isVideoStarted = ref(false);
 const faceMatcher = ref<faceapi.FaceMatcher | null>(null);
+const isCameraActive = ref(true);
 let detectionInterval: NodeJS.Timeout | null = null;
 
+const route = useRoute();
+const router = useRouter();
+
+const className = ref('');
+
 const fetchData = async () => {
+    if (!route.query.class_id || !route.query.date) {
+        router.push({ name: 'presence.create' });
+        return;
+    }
+
     try {
-        const response = await axios.get('/api/attendance');
-        students.value = response.data.students;
-        date.value = response.data.date;
+        const [attendanceRes, classRes] = await Promise.all([
+            axios.get('/api/attendance', {
+                params: {
+                    class_id: route.query.class_id,
+                    date: route.query.date,
+                    academic_year_id: route.query.academic_year_id,
+                }
+            }),
+            axios.get(`/api/school-classes/${route.query.class_id}`)
+        ]);
+
+        students.value = attendanceRes.data.students;
+        date.value = attendanceRes.data.date;
+        className.value = classRes.data.name;
         
         // After fetching students, prepare face descriptors
         if (isModelLoaded.value) {
             await prepareFaceMatcher();
         }
     } catch (error) {
-        console.error('Failed to fetch attendance data:', error);
+        console.error('Failed to fetch data:', error);
     }
 };
 
@@ -106,12 +129,47 @@ const startVideo = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
         videoRef.value.srcObject = stream;
         isVideoStarted.value = true;
+        isCameraActive.value = true;
         console.log('Camera started');
     } catch (err) {
         console.error('Error starting video:', err);
         alert('Failed to access camera. Please allow camera permissions.');
+        isCameraActive.value = false;
     }
 };
+
+const stopVideo = () => {
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    if (videoRef.value && videoRef.value.srcObject) {
+        const stream = videoRef.value.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.value.srcObject = null;
+    }
+    isVideoStarted.value = false;
+    isCameraActive.value = false;
+
+    // Clear canvas
+    const canvas = canvasRef.value;
+    if (canvas) {
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+};
+
+const toggleCamera = async () => {
+    if (isCameraActive.value) {
+        stopVideo();
+    } else {
+        await startVideo();
+    }
+};
+
+const detectionTracker = ref<Record<string, { firstSeen: number, lastSeen: number, processed: boolean }>>({});
 
 const onVideoPlay = () => {
     const video = videoRef.value;
@@ -150,11 +208,61 @@ const onVideoPlay = () => {
         if (faceMatcher.value) {
             const results = resizeDetections.map(d => faceMatcher.value!.findBestMatch(d.descriptor));
             
+            const now = Date.now();
+            const currentFrameFaces = new Set<string>();
+
             results.forEach((result, i) => {
                 const box = resizeDetections[i].detection.box;
-                const drawBox = new faceapi.draw.DrawBox(box, { label: result.toString() });
-                drawBox.draw(canvas);
+                const label = result.label;
+                
+                if (label !== 'unknown') {
+                    currentFrameFaces.add(label);
+                    
+                    if (!detectionTracker.value[label]) {
+                        detectionTracker.value[label] = { firstSeen: now, lastSeen: now, processed: false };
+                    } else {
+                        detectionTracker.value[label].lastSeen = now;
+                    }
+                    
+                    const tracker = detectionTracker.value[label];
+                    const duration = now - tracker.firstSeen;
+                    
+                    // Visual feedback
+                    let boxColor = 'blue';
+                    let text = `${label} (${Math.round(result.distance * 100)}%)`;
+
+                    if (tracker.processed) {
+                        boxColor = 'green';
+                        text = `${label} - PRESENT`;
+                    } else {
+                        // Progress indicator logic can be added here (e.g., drawing a distinct box or text)
+                        const progress = Math.min(duration / 3000, 1);
+                        text = `${label} ${(progress * 100).toFixed(0)}%`;
+                        
+                        if (duration >= 3000 && !loading.value) {
+                             // Find student ID by name
+                             const student = students.value.find(s => s.name === label);
+                             if (student) {
+                                 tracker.processed = true;
+                                 setStatus(student.id, 'present');
+                             }
+                        }
+                    }
+
+                    const drawBox = new faceapi.draw.DrawBox(box, { label: text, boxColor: boxColor });
+                    drawBox.draw(canvas);
+                } else {
+                    const drawBox = new faceapi.draw.DrawBox(box, { label: 'Unknown' });
+                    drawBox.draw(canvas);
+                }
             });
+
+            // Cleanup lost faces
+            for (const [name, tracker] of Object.entries(detectionTracker.value)) {
+                if (now - tracker.lastSeen > 1000) {
+                     delete detectionTracker.value[name];
+                }
+            }
         }
     }, 100);
 };
@@ -162,15 +270,13 @@ const onVideoPlay = () => {
 onMounted(async () => {
     await loadModels();
     await fetchData();
-    startVideo();
+    if (isCameraActive.value) {
+        startVideo();
+    }
 });
 
 onUnmounted(() => {
-    if (detectionInterval) clearInterval(detectionInterval);
-    if (videoRef.value && videoRef.value.srcObject) {
-        const stream = videoRef.value.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-    }
+    stopVideo();
 });
 
 const setStatus = async (studentId: number, status: string) => {
@@ -180,6 +286,7 @@ const setStatus = async (studentId: number, status: string) => {
             student_id: studentId,
             date: date.value,
             status: status,
+            subject_id: route.query.subject_id,
         });
 
         const student = students.value.find(s => s.id === studentId);
@@ -216,13 +323,22 @@ const breadcrumbs = [
         <div class="space-y-8">
             <div class="flex flex-col gap-1">
                 <h1 class="text-2xl font-semibold tracking-tight">Daily Presence</h1>
-                <p class="text-sm text-muted-foreground">Mark attendance for {{ date }}</p>
+                <p class="text-sm text-muted-foreground">Mark attendance for <strong>{{ className }}</strong> on {{ date }}</p>
             </div>
 
             <div class="grid gap-6 lg:grid-cols-2">
                 <!-- Camera Section -->
                 <div class="rounded-xl border bg-card p-6 shadow-sm">
-                    <h3 class="mb-4 text-lg font-medium">Face Recognition</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium">Face Recognition</h3>
+                        <button
+                            @click="toggleCamera"
+                            class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            :class="isCameraActive ? 'bg-red-100 text-red-900 hover:bg-red-200' : 'bg-green-100 text-green-900 hover:bg-green-200'"
+                        >
+                            {{ isCameraActive ? 'Stop Camera' : 'Start Camera' }}
+                        </button>
+                    </div>
                     <div class="relative overflow-hidden rounded-lg bg-black aspect-video">
                         <div v-if="!isModelLoaded" class="absolute inset-0 flex items-center justify-center text-white">
                             Loading models...

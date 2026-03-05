@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attendance extends Model
 {
-    protected $fillable = ['student_id', 'date', 'status'];
+    protected $fillable = ['student_id', 'user_id', 'subject_id', 'date', 'status'];
 
     public function student()
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class);
     }
 }
