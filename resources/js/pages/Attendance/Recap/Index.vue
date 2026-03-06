@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { ref, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 type Attendance = {
     id: number;
@@ -111,6 +112,36 @@ const getStatusColor = (status: string) => {
     }
 };
 
+const exportToExcel = () => {
+    if (!students.value.length) return;
+
+    const data = students.value.map((student, index) => {
+        const rowData: Record<string, string | number> = {
+            'No': index + 1,
+            'Name': student.name,
+            'NIS': student.nis,
+        };
+        
+        days.value.forEach(day => {
+            rowData[String(day)] = getStatus(student, day);
+        });
+        
+        return rowData;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data, {
+        header: ['No', 'Name', 'NIS', ...days.value.map(String)]
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absen");
+    
+    const subjectName = subjects.value.find(s => s.id === Number(selectedSubject.value))?.name || 'Semua_Pelajaran';
+    const monthName = months[selectedMonth.value - 1];
+    const fileName = `Rekap_Absen_${subjectName}_${monthName}_${selectedYear.value}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+};
+
 const breadcrumbs = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Attendance', href: '/attendance' },
@@ -156,6 +187,13 @@ const breadcrumbs = [
                             {{ year }}
                         </option>
                     </select>
+                    <button
+                        @click="exportToExcel"
+                        :disabled="!students.length"
+                        class="inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md border border-input bg-background px-3 py-1 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    >
+                        Export Excel
+                    </button>
                 </div>
             </div>
 
